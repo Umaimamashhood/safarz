@@ -1,1 +1,0 @@
-"""Safarz Flask and SQL backend package."""

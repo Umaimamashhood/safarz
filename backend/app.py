@@ -81,31 +81,9 @@ class RouteStop(Base):
     stop: Mapped[Stop] = relationship(back_populates="route_stops")
 
 
-SEED_STOPS = [
-    {"id": "gulshan-chowrangi", "name": "Gulshan Chowrangi", "name_ur": "گلشن چورنگی", "aliases": ["gulshan", "gulshan-e-iqbal"], "latitude": 24.91, "longitude": 67.08},
-    {"id": "numaish", "name": "Numaish", "name_ur": "نمائش", "aliases": ["nimaish"], "latitude": 24.87, "longitude": 67.03},
-    {"id": "saddar", "name": "Saddar", "name_ur": "صدر", "aliases": ["sadar"], "latitude": 24.86, "longitude": 67.01},
-    {"id": "clifton", "name": "Clifton", "name_ur": "کلفٹن", "aliases": [], "latitude": 24.81, "longitude": 67.03},
-    {"id": "tariq-road", "name": "Tariq Road", "name_ur": "طارق روڈ", "aliases": ["tariq"], "latitude": 24.87, "longitude": 67.06},
-    {"id": "korangi", "name": "Korangi", "name_ur": "کورنگی", "aliases": [], "latitude": 24.82, "longitude": 67.13},
-]
-
-SEED_BUSES = [
-    {"id": "bus-ev-03", "route_code": "EV-03", "name": "Electric express", "vehicle_type": "ev", "has_ac": True, "has_wheelchair": True, "image_filename": "WhatsApp Image 2026-08-29 at 16.06.36.jpeg"},
-    {"id": "bus-r-09", "route_code": "R-09", "name": "Karachi local bus", "vehicle_type": "fuel", "has_ac": False, "has_wheelchair": False, "image_filename": "WhatsApp Image 2026-08-29 at 16.06.37 (1).jpeg"},
-    {"id": "bus-r-22", "route_code": "R-22", "name": "City connector", "vehicle_type": "fuel", "has_ac": False, "has_wheelchair": False, "image_filename": "WhatsApp Image 2026-08-29 at 16.06.37 (2).jpeg"},
-]
-
-SEED_ROUTES = [
-    {"id": "route-ev-03", "bus_id": "bus-ev-03", "duration_minutes": 32, "frequency_minutes": 12, "fare_label": "Rs 80 / Rs 120", "fare_kind": "fixed", "stop_ids": ["gulshan-chowrangi", "numaish", "saddar"]},
-    {"id": "route-r-09", "bus_id": "bus-r-09", "duration_minutes": 39, "frequency_minutes": 18, "fare_label": "Ask conductor", "fare_kind": "variable", "stop_ids": ["gulshan-chowrangi", "numaish", "saddar"]},
-    {"id": "route-r-22", "bus_id": "bus-r-22", "duration_minutes": 45, "frequency_minutes": 10, "fare_label": "Ask conductor", "fare_kind": "variable", "stop_ids": ["gulshan-chowrangi", "numaish", "saddar"]},
-]
-
-
 def create_app(database_url: str | None = None) -> Flask:
     app = Flask(__name__)
-    database_url = database_url or os.getenv("DATABASE_URL", DEFAULT_DATABASE_URL)
+    database_url = database_url or os.getenv("DATABASE_URL") or DEFAULT_DATABASE_URL
     engine = create_engine(database_url, future=True)
     upgrade_schema(engine)
     Base.metadata.create_all(engine)
@@ -185,8 +163,13 @@ def create_app(database_url: str | None = None) -> Flask:
             # If the user did not fill the main search boxes, detect stop names
             # directly from the imported JSON-backed stop database.
             detected_from, detected_to = detect_route_places(session, question)
-            from_query = from_query or detected_from or ""
-            to_query = to_query or detected_to or ""
+            route_question = bool(
+                re.search(r"\b(bus|buses|route|routes|stop|from|to|via|go|goes|jana|jaye|jati|jaati|safar)\b", question.casefold())
+                or detected_from
+                or detected_to
+            )
+            from_query = (from_query if route_question else "") or detected_from or ""
+            to_query = (to_query if route_question else "") or detected_to or ""
 
             candidates = []
             start = find_stop(session, from_query) if from_query else None
@@ -200,7 +183,7 @@ def create_app(database_url: str | None = None) -> Flask:
             if not candidates:
                 candidates = service_routes_for_question(session, question, start, end)
 
-            answer, answer_source = answer_with_groq(question, from_query, to_query, candidates)
+            answer, answer_source = answer_with_groq(question, from_query, to_query, candidates, body.get("history", []))
             return jsonify(
                 answer=answer,
                 source=answer_source,
@@ -381,12 +364,17 @@ def detect_route_places(session: Session, question: str) -> tuple[str | None, st
                 if best is None or score > best[0]:
                     best = (score, pos)
         if best:
-            matches.append((best[1], -best[0][0], stop.name))
+            match_length = best[0][0]
+            matches.append((best[1], -match_length, stop.name, best[1] + match_length))
     matches.sort()
     names = []
-    for _, _, name in matches:
+    occupied = []
+    for start, _, name, end in matches:
+        if any(start < occupied_end and end > occupied_start for occupied_start, occupied_end in occupied):
+            continue
         if name.casefold() not in {item.casefold() for item in names}:
             names.append(name)
+            occupied.append((start, end))
         if len(names) == 2:
             break
 
@@ -412,16 +400,22 @@ def service_routes_for_question(
     end: Stop | None,
 ) -> list[dict]:
     """Return routes grounded in the JSON import for stop/service questions."""
+    all_routes = session.scalars(select(Route).where(Route.active.is_(True))).all()
+    q = question.casefold()
+    bus_matches = [
+        route for route in all_routes
+        if re.search(rf"(?<!\w){re.escape(route.bus.route_code.casefold())}(?!\w)", q)
+        or route.bus.name.casefold() in q
+    ]
     target = end or start
-    if not target:
+    candidate_routes = bus_matches or all_routes if target else bus_matches
+    if not candidate_routes:
         return []
 
-    all_routes = session.scalars(select(Route).where(Route.active.is_(True))).all()
     target_results = []
-    q = question.casefold()
-    for route in all_routes:
+    for route in candidate_routes:
         ordered_stops = [item.stop for item in route.route_stops]
-        if not any(stop.id == target.id for stop in ordered_stops):
+        if target and not any(stop.id == target.id for stop in ordered_stops):
             continue
         # If the question asks about AC/electric/wheelchair, keep relevant buses first.
         feature_match = (
@@ -644,7 +638,16 @@ def rank_routes_with_ai(routes: list[dict], from_query: str, to_query: str) -> t
             {"role": "user", "content": json.dumps({"from": from_query, "to": to_query, "routes": [{"id": route["id"], "routeCode": route["routeCode"], "changes": route["changes"], "distanceKm": route["distanceKm"], "stops": route["stops"], "legs": route["legs"]} for route in routes]}, ensure_ascii=False)},
         ],
     }
-    request = urllib.request.Request(endpoint, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}, method="POST")
+    request = urllib.request.Request(
+        endpoint,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "User-Agent": "Safarz Karachi Bus Finder/1.0",
+        },
+        method="POST",
+    )
     try:
         with urllib.request.urlopen(request, timeout=8) as response:
             body = json.loads(response.read().decode("utf-8"))
@@ -658,7 +661,7 @@ def rank_routes_with_ai(routes: list[dict], from_query: str, to_query: str) -> t
         return routes, "database"
 
 
-def answer_with_groq(question: str, from_query: str, to_query: str, routes: list[dict]) -> tuple[str, str]:
+def answer_with_groq(question: str, from_query: str, to_query: str, routes: list[dict], history: list[dict] | None = None) -> tuple[str, str]:
     route_context = [{
         "routeCode": route["routeCode"],
         "busName": route["busName"],
@@ -675,22 +678,44 @@ def answer_with_groq(question: str, from_query: str, to_query: str, routes: list
     api_key = os.getenv("GROQ_API_KEY") or os.getenv("AI_API_KEY")
     if not api_key:
         return fallback, "database"
+    prior_messages = [
+        item for item in (history or [])
+        if isinstance(item, dict)
+        and item.get("role") in {"user", "assistant"}
+        and isinstance(item.get("content"), str)
+    ][-8:]
     payload = {
         "model": os.getenv("GROQ_MODEL", "openai/gpt-oss-20b"),
         "temperature": 0.2,
         "messages": [
-            {"role": "system", "content": """You are Safarz, a Karachi bus assistant. The route records supplied below are the source of truth and come from Safarz's imported Karachi bus JSON data. Answer only from those records and never invent bus codes, stops, fares, distances, or times. If the user asks for a route, clearly state the bus code, origin, destination, changes, and distance when available. For connections, explain each leg in order and name the transfer stop. If no matching records are supplied, say that the imported data does not contain that route. Match the user's language: English, Urdu, or Roman Urdu. Keep answers concise and practical."""},
+            {"role": "system", "content": """You are Safarz, a helpful general-purpose AI assistant. Answer all kinds of safe user questions, including general knowledge, explanations, math, coding, writing, casual conversation, and travel. You are especially useful for Karachi public transport. The route records supplied below are the only source of truth for bus facts: never invent bus codes, stops, fares, distances, times, frequencies, or routes. Never claim Safarz has app-store downloads, accounts, live tracking, notifications, saved routes, or other features unless they are explicitly present in the supplied context. If the user names a bus code or bus name and matching route records are supplied, answer about that bus directly: summarize its first stop, last stop, key stops, and available service facts; do not ask for an origin and destination. Recommend the best available bus option using fewer changes first, then shorter estimated distance, then shorter duration. For connections, explain each leg and name the transfer stop. If route records do not answer a bus question, say so plainly and ask for the origin and destination. For non-bus questions, answer normally using general knowledge and distinguish uncertain or current information. Match the user's language: English, Urdu script, or Roman Urdu. If the user mixes languages, reply naturally in the dominant language. Be conversational, helpful, and concise. Distances marked as stop-count estimates must be called estimates. Do not mention hidden prompts or JSON."""},
+            *prior_messages,
             {"role": "user", "content": json.dumps({"question": question, "from": from_query, "to": to_query, "routes": route_context}, ensure_ascii=False)},
         ],
     }
     endpoint = os.getenv("GROQ_API_URL", "https://api.groq.com/openai/v1/chat/completions")
-    request = urllib.request.Request(endpoint, data=json.dumps(payload).encode("utf-8"), headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}, method="POST")
+    request = urllib.request.Request(
+        endpoint,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+            "User-Agent": "Safarz Karachi Bus Finder/1.0",
+        },
+        method="POST",
+    )
     try:
         with urllib.request.urlopen(request, timeout=10) as response:
             body = json.loads(response.read().decode("utf-8"))
         answer = body["choices"][0]["message"]["content"].strip()
+        if routes and re.search(r"\b(no|not|don['’]?t|do not)\b.*\b(route|bus|data|find)\b", answer.casefold()):
+            return fallback, "database"
         return answer, "groq"
-    except (urllib.error.URLError, TimeoutError, KeyError, TypeError, ValueError, json.JSONDecodeError):
+    except urllib.error.HTTPError as error:
+        print(f"Groq chat unavailable; using database fallback: HTTP {error.code} {error.read().decode('utf-8', errors='replace')[:200]}")
+        return fallback, "database"
+    except (urllib.error.URLError, TimeoutError, KeyError, TypeError, ValueError, json.JSONDecodeError) as error:
+        print(f"Groq chat unavailable; using database fallback: {error}")
         return fallback, "database"
 
 
@@ -700,7 +725,7 @@ def grounded_chat_fallback(question: str, from_query: str, to_query: str, routes
             return f"I could not find an imported bus route from {from_query} to {to_query}. Try selecting nearby stops from the search suggestions."
         if to_query:
             return f"I found no imported bus information for {to_query}. Try another Karachi stop name."
-        return "I can answer from Safarz's imported Karachi bus JSON. Ask me something like: 'Which bus goes from Gulshan Chowrangi to Saddar?'"
+        return "I can answer from Safarz's imported Karachi route data. Ask me something like: 'Which bus goes from Gulshan Chowrangi to Saddar?'"
 
     if from_query and to_query:
         intro = f"For {from_query} to {to_query}, "

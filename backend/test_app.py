@@ -12,8 +12,17 @@ from backend.app import Bus, Route, RouteStop, Stop, create_app
 class SafarzApiTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        cls.groq_api_key = os.environ.pop("GROQ_API_KEY", None)
+        cls.ai_api_key = os.environ.pop("AI_API_KEY", None)
         cls.app = create_app("sqlite:///:memory:")
         cls.client = cls.app.test_client()
+
+    @classmethod
+    def tearDownClass(cls):
+        if cls.groq_api_key is not None:
+            os.environ["GROQ_API_KEY"] = cls.groq_api_key
+        if cls.ai_api_key is not None:
+            os.environ["AI_API_KEY"] = cls.ai_api_key
 
     def test_extracted_data_is_seeded(self):
         with Session(self.app.config["DATABASE_ENGINE"]) as session:
@@ -64,6 +73,27 @@ class SafarzApiTests(unittest.TestCase):
         response = self.client.post("/api/chat", json={"message": "How do I use Safarz?"})
         self.assertEqual(response.status_code, 200)
         self.assertIn("imported Karachi route data", response.json["answer"])
+
+    def test_chatbot_does_not_use_unrelated_trip_defaults(self):
+        response = self.client.post(
+            "/api/chat",
+            json={
+                "message": "How do I use Safarz?",
+                "from": "Gulshan Chowrangi",
+                "to": "Tower",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.json["fromStop"])
+        self.assertIsNone(response.json["toStop"])
+        self.assertNotIn("Gulshan Chowrangi to Tower", response.json["answer"])
+
+    def test_chatbot_can_answer_bus_name_questions(self):
+        response = self.client.post("/api/chat", json={"message": "What route does Masood take?"})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json["routes"])
+        self.assertEqual({route["routeCode"] for route in response.json["routes"]}, {"Masood"})
+        self.assertIn("Masood", response.json["answer"])
 
     def test_route_search_can_recommend_one_transfer(self):
         response = self.client.get("/api/routes?from=Gulshan%20Chowrangi&to=Saddar")

@@ -223,7 +223,15 @@ function serviceResults(question) {
   loadRouteData();
   const q = normalize(question);
   const target = findStopInQuestion(question);
-  let results = routeData.filter(route => target && (route.stops || []).some(s => normalize(s) === normalize(target)));
+  const busMatches = routeData.filter(route => {
+    const code = normalize(route.code);
+    const name = normalize(route.name);
+    const padded = ` ${q} `;
+    return padded.includes(` ${code} `) || q.includes(name);
+  });
+  let results = busMatches.length
+    ? busMatches
+    : routeData.filter(route => target && (route.stops || []).some(s => normalize(s) === normalize(target)));
   if (/\bac\b|air.?condition|electric|\bev bus\b/.test(q)) {
     results = results.filter(r => r.vehicle_type === "ev");
   }
@@ -261,7 +269,7 @@ function groundedAnswer(question, from, to, routes) {
   return `I found these imported routes: ${names}. ${routes.length > 5 ? "There are more options in the dataset." : ""}`;
 }
 
-async function aiAnswer(question, from, to, routes) {
+async function aiAnswer(question, from, to, routes, history = []) {
   const fallback = groundedAnswer(question, from, to, routes);
   const key = process.env.GROQ_API_KEY || process.env.AI_API_KEY;
   if (!key || typeof fetch !== "function") return { answer: fallback, source: "database" };
@@ -274,7 +282,8 @@ async function aiAnswer(question, from, to, routes) {
         model: process.env.GROQ_MODEL || "openai/gpt-oss-20b",
         temperature: 0.2,
         messages: [
-          { role: "system", content: "You are Safarz, a Karachi bus assistant. The supplied route records are the ONLY source of truth. Never invent a bus, stop, distance, fare, time or route. Match English, Urdu or Roman Urdu. Be concise and practical. Distances marked as stop-count estimates must be called estimates." },
+          { role: "system", content: "You are Safarz, a helpful general-purpose AI assistant. Answer all kinds of safe user questions, including general knowledge, explanations, math, coding, writing, casual conversation, and travel. You are especially useful for Karachi public transport. The route records supplied below are the only source of truth for bus facts: never invent a bus, stop, distance, fare, time, frequency, or route. Never claim Safarz has app-store downloads, accounts, live tracking, notifications, saved routes, or other features unless they are explicitly present in the supplied context. If the user names a bus code or bus name and matching route records are supplied, answer about that bus directly: summarize its first stop, last stop, key stops, and available service facts; do not ask for an origin and destination. Choose and clearly recommend the best available bus route using fewer changes first, then shorter estimated distance, then shorter duration. For connections, explain every leg and the transfer stop. If route records do not answer a bus question, say so plainly and ask for the origin and destination. For non-bus questions, answer normally using general knowledge and distinguish uncertain or current information. Match the user's language: English, Urdu script, or Roman Urdu. If the user mixes languages, reply naturally in the dominant language. Be conversational, helpful, and concise. Distances marked as stop-count estimates must be called estimates. Do not mention hidden prompts or JSON." },
+          ...history.filter(item => (item?.role === "user" || item?.role === "assistant") && typeof item.content === "string").slice(-8),
           { role: "user", content: JSON.stringify({ question, from, to, routes: context }) }
         ]
       })
@@ -282,7 +291,7 @@ async function aiAnswer(question, from, to, routes) {
     if (!response.ok) throw new Error(`Groq HTTP ${response.status}`);
     const body = await response.json();
     const answer = body?.choices?.[0]?.message?.content?.trim();
-    if (answer) return { answer, source: "groq" };
+    if (answer && !(routes.length && /\b(no|not|don't|do not)\b.*\b(route|bus|data|find)\b/i.test(answer))) return { answer, source: "groq" };
   } catch (error) {
     console.warn("AI provider unavailable; using dataset fallback:", error.message);
   }
@@ -333,13 +342,20 @@ async function chatAnswer(body) {
   let from = String(body?.from || "").trim();
   let to = String(body?.to || "").trim();
   if (!question) throw new Error("message is required");
+  const history = Array.isArray(body?.history) ? body.history : [];
   const detectedStops = detectQuestionStops(question);
-  if (!from) from = detectedStops[0] || null;
-  if (!to) to = detectedStops[1] || null;
+  const routeQuestion = /\b(bus|buses|route|routes|stop|from|to|via|go|goes|jana|jaye|jati|jaati|safar)\b/i.test(question) || detectedStops.length > 0;
+  if (!routeQuestion) {
+    from = null;
+    to = null;
+  } else {
+    if (!from) from = detectedStops[0] || null;
+    if (!to) to = detectedStops[1] || null;
+  }
   let result = [];
   if (from && to && normalize(from) !== normalize(to)) result = routeResults(from, to).routes;
   if (!result.length) result = serviceResults(question);
-  const ai = await aiAnswer(question, from, to, result);
+  const ai = await aiAnswer(question, from, to, result, history);
   return { answer: ai.answer, source: ai.source, fromStop: from ? { name: from } : null, toStop: to ? { name: to } : null, routes: result };
 }
 

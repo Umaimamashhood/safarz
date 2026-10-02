@@ -75,12 +75,11 @@
         padding: 8px 11px; font-size: 12px; font-weight: 600;
       }
       .language-switch button.active { background: var(--ink); color: var(--paper); }
-      .icon-btn, .login-btn {
+      .icon-btn {
         border: 1px solid var(--line); background: var(--card); color: var(--ink);
         border-radius: 99px; height: 39px; padding: 0 14px; font-size: 12px; font-weight: 600;
       }
       .icon-btn { width: 39px; padding: 0; font-size: 17px; }
-      .login-btn { display: flex; align-items: center; gap: 8px; }
       .avatar { width: 20px; height: 20px; display: grid; place-items: center; background: var(--mint); color: var(--ink); border-radius: 50%; font-size: 11px; }
 
       .page { padding: 42px; }
@@ -232,7 +231,7 @@
         .topbar { height: auto; min-height: 76px; padding: 14px 16px; align-items: flex-start; }
         .top-actions { gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
         .brand-tagline { display: none; } .brand-name { font-size: 19px; } .brand-mark { width: 37px; height: 37px; }
-        .language-switch button { padding: 6px 7px; font-size: 10px; } .login-btn { height: 34px; padding: 0 10px; }
+        .language-switch button { padding: 6px 7px; font-size: 10px; }
         .icon-btn { width: 34px; height: 34px; } .page { padding: 22px 14px 100px; }
         h1 { font-size: 46px; } .hero-copy { padding-top: 8px; }
         .hero-art { min-height: 180px; } .bus-illustration { transform: scale(.77); transform-origin: right bottom; }
@@ -256,7 +255,6 @@
             <button data-language="roman">Roman</button>
           </div>
           <button class="icon-btn" id="themeToggle" aria-label="Toggle theme">☼</button>
-          <button class="login-btn" id="loginOpen"><span class="avatar">→</span><span data-i18n="login">Log in</span></button>
         </div>
       </header>
 
@@ -352,21 +350,17 @@
       <form class="chat-input" id="chatForm"><input id="chatInput" data-placeholder="chatPlaceholder" placeholder="Ask about a route…" /><button class="chat-send">↑</button></form>
     </section>
 
-    <div class="modal-backdrop" id="loginModal">
-      <div class="modal"><button class="modal-close" id="loginClose">×</button><h3 data-i18n="welcomeBack">Welcome back.</h3><p data-i18n="loginSub">Log in to save your home stop, recent routes, and preferred language.</p><div class="input-wrap"><input type="email" placeholder="Email address" /></div><button class="search-submit" data-i18n="continue">Continue <span>→</span></button></div>
-    </div>
-
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
     <script>
       const translations = {
         en: {
-          tagline: "karachi bus finder", login: "Log in", eyebrow: "your everyday route, sorted", heroTitle: "Go places.<br><em>Not in circles.</em>", heroBody: "Find the right bus from the stop closest to you — with clear timing, simple transfers, and the fare before you leave.", serving: "serving karachi, one stop at a time", planTrip: "Plan your trip", planSub: "Tell us where you are and where you're headed.", from: "from", to: "to", useLocation: "Use my location", recent: "Recent:", trySearch: "Try:", findBuses: "Find buses", backendReady: "Live route data connected", resultsFor: "routes for", sort: "Sort: fastest ↓", routeOnMap: "recommended route", directRoute: "direct · no changes", leavesEvery: "leaves every", ac: "AC", accessible: "wheelchair", fixedFare: "fixed fare", seeFare: "See fare +", evFareDetail: "EV fare · up to 15 km / over 15 km", fuelBus: "fuel bus", cheaper: "usually cheaper", fuelFareDetail: "Fuel bus fare · varies by bus and stop", changeRoute: "Via Numaish", oneChange: "1 change · same ticket search", oneChangeTag: "1 change", moreOptions: "more options", changeFareDetail: "Two fuel buses · fare depends on both rides", emptyResults: "We couldn't match that route yet. Try a nearby landmark or stop name.", askSafar: "Ask Safarz", assistantName: "Safarz assistant", readyToHelp: "ready to help", welcomeChat: "Assalam-o-alaikum! I can help you use Safarz or find a bus between two stops. Try asking “Which bus goes from Gulshan Chowrangi to Saddar?”", quickHow: "How to use?", quickBus: "Bus to Saddar", quickAc: "AC buses", chatPlaceholder: "Ask about a route…", welcomeBack: "Welcome back.", loginSub: "Log in to save your home stop, recent routes, and preferred language.", continue: "Continue", fromPlaceholder: "Pickup stop or landmark", toPlaceholder: "Destination or landmark"
+          tagline: "karachi bus finder", eyebrow: "your everyday route, sorted", heroTitle: "Go places.<br><em>Not in circles.</em>", heroBody: "Find the right bus from the stop closest to you — with clear timing, simple transfers, and the fare before you leave.", serving: "serving karachi, one stop at a time", planTrip: "Plan your trip", planSub: "Tell us where you are and where you're headed.", from: "from", to: "to", useLocation: "Use my location", recent: "Recent:", trySearch: "Try:", findBuses: "Find buses", backendReady: "Live route data connected", resultsFor: "routes for", sort: "Sort: fastest ↓", routeOnMap: "recommended route", directRoute: "direct · no changes", leavesEvery: "leaves every", ac: "AC", accessible: "wheelchair", fixedFare: "fixed fare", seeFare: "See fare +", evFareDetail: "EV fare · up to 15 km / over 15 km", fuelBus: "fuel bus", cheaper: "usually cheaper", fuelFareDetail: "Fuel bus fare · varies by bus and stop", changeRoute: "Via Numaish", oneChange: "1 change · same ticket search", oneChangeTag: "1 change", moreOptions: "more options", changeFareDetail: "Two fuel buses · fare depends on both rides", emptyResults: "We couldn't match that route yet. Try a nearby landmark or stop name.", askSafar: "Ask Safarz", assistantName: "Safarz assistant", readyToHelp: "ready to help", welcomeChat: "Assalam-o-alaikum! I can help you use Safarz or find a bus between two stops. Try asking “Which bus goes from Gulshan Chowrangi to Saddar?”", quickHow: "How to use?", quickBus: "Bus to Saddar", quickAc: "AC buses", chatPlaceholder: "Ask about a route…", fromPlaceholder: "Pickup stop or landmark", toPlaceholder: "Destination or landmark"
         },
         ur: {
-          tagline: "کراچی بس فائنڈر", login: "لاگ اِن", eyebrow: "آپ کا روزمرہ کا راستہ، آسان", heroTitle: "منزل تک جائیں۔<br><em>چکر نہ لگائیں۔</em>", heroBody: "اپنے قریب ترین اسٹاپ سے صحیح بس تلاش کریں — واضح اوقات، آسان تبدیلیاں اور روانگی سے پہلے کرایہ۔", serving: "کراچی کی ہر منزل، ایک اسٹاپ کے بعد", planTrip: "اپنا سفر پلان کریں", planSub: "بتائیں آپ کہاں ہیں اور کہاں جانا ہے۔", from: "کہاں سے", to: "کہاں تک", useLocation: "میری لوکیشن استعمال کریں", recent: "حالیہ:", trySearch: "آزمائیں:", findBuses: "بسیں تلاش کریں", backendReady: "لائیو روٹ ڈیٹا منسلک ہے", resultsFor: "روٹس برائے", sort: "ترتیب: تیز ترین ↓", routeOnMap: "تجویز کردہ روٹ", directRoute: "براہ راست · تبدیلی نہیں", leavesEvery: "ہر منٹ بعد", ac: "اے سی", accessible: "وہیل چیئر", fixedFare: "مقررہ کرایہ", seeFare: "کرایہ دیکھیں +", evFareDetail: "ای وی کرایہ · 15 کلومیٹر تک / 15 کلومیٹر سے زیادہ", fuelBus: "ایندھن والی بس", cheaper: "عام طور پر سستی", fuelFareDetail: "ایندھن بس کا کرایہ · بس اور اسٹاپ کے حساب سے", changeRoute: "نمائش کے راستے", oneChange: "1 تبدیلی · اسی تلاش میں", oneChangeTag: "1 تبدیلی", moreOptions: "مزید راستے", changeFareDetail: "دو ایندھن بسیں · کرایہ دونوں سفر پر منحصر", emptyResults: "یہ روٹ نہیں ملا۔ قریبی نشانی یا اسٹاپ کا نام آزمائیں۔", askSafar: "سفرز سے پوچھیں", assistantName: "سفرز اسسٹنٹ", readyToHelp: "مدد کے لیے تیار", welcomeChat: "السلام علیکم! میں سفرز استعمال کرنے یا دو اسٹاپ کے درمیان بس تلاش کرنے میں مدد کر سکتا ہوں۔ پوچھیں: “قریب ترین اسٹاپ کیسے تلاش کروں؟”", quickHow: "استعمال کیسے کریں؟", quickBus: "صدر جانے والی بس", quickAc: "اے سی بسیں", chatPlaceholder: "روٹ کے بارے میں پوچھیں…", welcomeBack: "خوش آمدید۔", loginSub: "اپنا گھر کا اسٹاپ، حالیہ روٹس اور زبان محفوظ کرنے کے لیے لاگ اِن کریں۔", continue: "جاری رکھیں", fromPlaceholder: "پک اَپ اسٹاپ یا نشانی", toPlaceholder: "منزل یا نشانی"
+          tagline: "کراچی بس فائنڈر", eyebrow: "آپ کا روزمرہ کا راستہ، آسان", heroTitle: "منزل تک جائیں۔<br><em>چکر نہ لگائیں۔</em>", heroBody: "اپنے قریب ترین اسٹاپ سے صحیح بس تلاش کریں — واضح اوقات، آسان تبدیلیاں اور روانگی سے پہلے کرایہ۔", serving: "کراچی کی ہر منزل، ایک اسٹاپ کے بعد", planTrip: "اپنا سفر پلان کریں", planSub: "بتائیں آپ کہاں ہیں اور کہاں جانا ہے۔", from: "کہاں سے", to: "کہاں تک", useLocation: "میری لوکیشن استعمال کریں", recent: "حالیہ:", trySearch: "آزمائیں:", findBuses: "بسیں تلاش کریں", backendReady: "لائیو روٹ ڈیٹا منسلک ہے", resultsFor: "روٹس برائے", sort: "ترتیب: تیز ترین ↓", routeOnMap: "تجویز کردہ روٹ", directRoute: "براہ راست · تبدیلی نہیں", leavesEvery: "ہر منٹ بعد", ac: "اے سی", accessible: "وہیل چیئر", fixedFare: "مقررہ کرایہ", seeFare: "کرایہ دیکھیں +", evFareDetail: "ای وی کرایہ · 15 کلومیٹر تک / 15 کلومیٹر سے زیادہ", fuelBus: "ایندھن والی بس", cheaper: "عام طور پر سستی", fuelFareDetail: "ایندھن بس کا کرایہ · بس اور اسٹاپ کے حساب سے", changeRoute: "نمائش کے راستے", oneChange: "1 تبدیلی · اسی تلاش میں", oneChangeTag: "1 تبدیلی", moreOptions: "مزید راستے", changeFareDetail: "دو ایندھن بسیں · کرایہ دونوں سفر پر منحصر", emptyResults: "یہ روٹ نہیں ملا۔ قریبی نشانی یا اسٹاپ کا نام آزمائیں۔", askSafar: "سفرز سے پوچھیں", assistantName: "سفرز اسسٹنٹ", readyToHelp: "مدد کے لیے تیار", welcomeChat: "السلام علیکم! میں سفرز استعمال کرنے یا دو اسٹاپ کے درمیان بس تلاش کرنے میں مدد کر سکتا ہوں۔ پوچھیں: “قریب ترین اسٹاپ کیسے تلاش کروں؟”", quickHow: "استعمال کیسے کریں؟", quickBus: "صدر جانے والی بس", quickAc: "اے سی بسیں", chatPlaceholder: "روٹ کے بارے میں پوچھیں…", fromPlaceholder: "پک اَپ اسٹاپ یا نشانی", toPlaceholder: "منزل یا نشانی"
         },
         roman: {
-          tagline: "karachi bus finder", login: "Log in", eyebrow: "aap ka rozmarra route, sorted", heroTitle: "Manzil tak jao.<br><em>Chakkar na lagao.</em>", heroBody: "Apne qareeb tareen stop se sahi bus dhoondein — wazeh timing, asaan tabdeeliyan aur rawangi se pehle fare.", serving: "karachi ki har manzil, aik stop ke baad", planTrip: "Apna safar plan karein", planSub: "Batayein aap kahan hain aur kahan jana hai.", from: "kahan se", to: "kahan tak", useLocation: "Meri location use karein", recent: "Haliya:", trySearch: "Aazmayein:", findBuses: "Busen dhoondein", backendReady: "Live route data connected hai", resultsFor: "routes baraye", sort: "Tarteeb: fastest ↓", routeOnMap: "tajweez karda route", directRoute: "barah-e-raast · koi tabdeeli nahi", leavesEvery: "har", ac: "AC", accessible: "wheelchair", fixedFare: "fixed fare", seeFare: "Fare dekhein +", evFareDetail: "EV fare · 15 km tak / 15 km se zyada", fuelBus: "fuel bus", cheaper: "aam tor par sasti", fuelFareDetail: "Fuel bus fare · bus aur stop ke hisaab se", changeRoute: "Numaish ke raste", oneChange: "1 tabdeeli · isi search mein", oneChangeTag: "1 tabdeeli", moreOptions: "mazeed routes", changeFareDetail: "Do fuel buses · fare dono rides par depend", emptyResults: "Yeh route nahi mila. Qareebi landmark ya stop ka naam aazmayein.", askSafar: "Safarz se poochein", assistantName: "Safarz assistant", readyToHelp: "madad ke liye tayyar", welcomeChat: "Assalam-o-alaikum! Main Safarz use karne ya do stops ke darmiyan bus dhoondne mein madad kar sakta hoon. Poochein: “Qareeb tareen stop kaise dhoondun?”", quickHow: "Use kaise karein?", quickBus: "Saddar ki bus", quickAc: "AC buses", chatPlaceholder: "Route ke bare mein poochein…", welcomeBack: "Khush aamdeed.", loginSub: "Apna home stop, recent routes aur pasandeeda zaban save karne ke liye log in karein.", continue: "Jaari rakhein", fromPlaceholder: "Pickup stop ya landmark", toPlaceholder: "Manzil ya landmark"
+          tagline: "karachi bus finder", eyebrow: "aap ka rozmarra route, sorted", heroTitle: "Manzil tak jao.<br><em>Chakkar na lagao.</em>", heroBody: "Apne qareeb tareen stop se sahi bus dhoondein — wazeh timing, asaan tabdeeliyan aur rawangi se pehle fare.", serving: "karachi ki har manzil, aik stop ke baad", planTrip: "Apna safar plan karein", planSub: "Batayein aap kahan hain aur kahan jana hai.", from: "kahan se", to: "kahan tak", useLocation: "Meri location use karein", recent: "Haliya:", trySearch: "Aazmayein:", findBuses: "Busen dhoondein", backendReady: "Live route data connected hai", resultsFor: "routes baraye", sort: "Tarteeb: fastest ↓", routeOnMap: "tajweez karda route", directRoute: "barah-e-raast · koi tabdeeli nahi", leavesEvery: "har", ac: "AC", accessible: "wheelchair", fixedFare: "fixed fare", seeFare: "Fare dekhein +", evFareDetail: "EV fare · 15 km tak / 15 km se zyada", fuelBus: "fuel bus", cheaper: "aam tor par sasti", fuelFareDetail: "Fuel bus fare · bus aur stop ke hisaab se", changeRoute: "Numaish ke raste", oneChange: "1 tabdeeli · isi search mein", oneChangeTag: "1 tabdeeli", moreOptions: "mazeed routes", changeFareDetail: "Do fuel buses · fare dono rides par depend", emptyResults: "Yeh route nahi mila. Qareebi landmark ya stop ka naam aazmayein.", askSafar: "Safarz se poochein", assistantName: "Safarz assistant", readyToHelp: "madad ke liye tayyar", welcomeChat: "Assalam-o-alaikum! Main Safarz use karne ya do stops ke darmiyan bus dhoondne mein madad kar sakta hoon. Poochein: “Qareeb tareen stop kaise dhoondun?”", quickHow: "Use kaise karein?", quickBus: "Saddar ki bus", quickAc: "AC buses", chatPlaceholder: "Route ke bare mein poochein…", fromPlaceholder: "Pickup stop ya landmark", toPlaceholder: "Manzil ya landmark"
         }
       };
 
@@ -515,6 +509,7 @@
       });
 
       const chatWindow = document.getElementById("chatWindow");
+      const chatHistory = [];
       document.getElementById("chatOpen").addEventListener("click", () => chatWindow.classList.toggle("open"));
       document.getElementById("chatClose").addEventListener("click", () => chatWindow.classList.remove("open"));
       const addMessage = (text, user = false) => {
@@ -525,12 +520,15 @@
         document.getElementById("chatMessages").scrollTop = 9999;
       };
       const assistantReply = async (question) => {
-        const from = document.getElementById("fromInput").value.trim();
-        const to = document.getElementById("toInput").value.trim();
         try {
-          const response = await fetch(`${API_BASE_URL}/api/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: question, from, to }) });
+          // Chat questions should be grounded in stops named in the question,
+          // not the unrelated defaults in the trip planner.
+          const response = await fetch(`${API_BASE_URL}/api/chat`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ message: question, history: chatHistory.slice(-8) }) });
           const data = await response.json();
-          if (response.ok && data.answer) return data.answer;
+          if (response.ok && data.answer) {
+            chatHistory.push({ role: "user", content: question }, { role: "assistant", content: data.answer });
+            return data.answer;
+          }
           return data.error || "I could not answer that from the imported bus data.";
         } catch (error) {
           return "I cannot reach the Safarz server right now. Please make sure you started the app with: npm start";
@@ -557,9 +555,6 @@
       });
       document.querySelectorAll(".quick-replies button").forEach(btn => btn.addEventListener("click", () => submitChat(btn.dataset.question)));
 
-      document.getElementById("loginOpen").addEventListener("click", () => document.getElementById("loginModal").classList.add("open"));
-      document.getElementById("loginClose").addEventListener("click", () => document.getElementById("loginModal").classList.remove("open"));
-      document.getElementById("loginModal").addEventListener("click", event => { if (event.target.id === "loginModal") event.currentTarget.classList.remove("open"); });
       applyLanguage("en");
     </script>
   </body>
